@@ -230,7 +230,7 @@ int checkRedirect(char* argv[], char fileName[]){
 			fileName = NULL;
 			return 0;
 		}
-		else if (!strcmp(argv[i], "<")){
+		else if (!strcmp(argv[i], "<")){ 
 			strcpy(fileName, argv[i+1]);
 			argv[i] = NULL;		
 			argv[i+1] = NULL;
@@ -376,26 +376,26 @@ int main () {
     		}
     		clasificacion=getClasificacionComando( argv[0] );
     		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
-    		flagRedirect = checkRedirect(argv, fileName);
+    		//
     		if (strcmp(ruta,"[error]") != 0 ){
     			contadorHijosAnterior=contadorHijos;
     			contadorHijos++;
-    			
-    			pid = fork(); //Fork.
+    			pid = fork();
+    			  			
 
     			if (pid == 0) { //Proceso hijo.
     				
-    				if(flagRedirect == 2){
-						outPut(fileName);
-					}
-					else if(flagRedirect == 1){						
-						freopen(fileName,"r",stdin);
-					}
+    				
     				
     				if(strcmp(argv[argc-1],"&")!=0){ //No es en segundo plano la ejecución.
-    					
+    					flagRedirect = checkRedirect(argv, fileName);
+    					if(flagRedirect == 2){
+							outPut(fileName);
+						}
+						else if(flagRedirect == 1){						
+							freopen(fileName,"r",stdin);
+						}
     					ejecutarArchivo( ruta , argv );
-
     					
     				}
     				else{
@@ -405,7 +405,13 @@ int main () {
     													 //debido al ampersand.
     						argvAux[i]=argv[i];
     					}
-    					
+    					flagRedirect = checkRedirect(argv, fileName);
+    					if(flagRedirect == 2){
+							outPut(fileName);
+						}
+						else if(flagRedirect == 1){						
+							freopen(fileName,"r",stdin);
+						}
     					ejecutarArchivo( ruta , argvAux );
     					
     					
@@ -423,7 +429,7 @@ int main () {
     				else{ //Ejecucion de proceso hijo es en segundo plano. No espera.
     					printf ("[%d]   %d\n", contadorHijos , pid );    					
     				}		
-    			}		
+    			}	
     		}
 
     	}		
