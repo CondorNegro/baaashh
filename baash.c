@@ -20,8 +20,7 @@
 #define LOG_RED(X) printf ( "%s %s %s" , Color_Red , X , Color_end )
 #define LOG_GREEN(X) printf ( "%s %s %s" , Color_Green , X , Color_end )
 
-char* concat(const char *s1, const char *s2)
-{
+char* concat (const char *s1, const char *s2) {
     const size_t len1 = strlen(s1);
     const size_t len2 = strlen(s2);
     char *result = malloc(len1+len2+1);//+1 for the zero-terminator
@@ -157,8 +156,11 @@ int main () {
     	}
     	else{
     		argc=parseArguments(argv,buffer);
-    		if (strcmp(argv[0],"cd") == 0 ){
+    		if (strcmp(argv[0],"cd") == 0 && argc>1){
     			cdBuiltin(argv[1]);
+    			continue;
+    		}
+    		if (strcmp(argv[0],"cd") == 0 && argc==1){
     			continue;
     		}
     		if (strcmp(argv[0],"exit") == 0 ){
