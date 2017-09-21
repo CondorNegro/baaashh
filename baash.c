@@ -17,16 +17,16 @@
 #define Color_end "\033[0m" // To flush out prev settings
 #define Color_Green "\x1b[32m"
 #define LOG_BLUE(X) printf ( "%s %s %s", Color_Blue , X , Color_end )
-#define LOG_RED(X) printf ( "%s %s %s" , Color_Red , X , Color_end )
+#define LOG_RED(X,Z) printf ( "%s %s@%s %s" , Color_Red , X , Z , Color_end )
 #define LOG_GREEN(X) printf ( "%s %s %s" , Color_Green , X , Color_end )
 
-char* concat (const char *s1, const char *s2) {
+char* concat ( const char *s1, const char *s2) {
     const size_t len1 = strlen(s1);
     const size_t len2 = strlen(s2);
-    char *result = malloc(len1+len2+1);//+1 for the zero-terminator
-    //in real code you would check for errors in malloc here
+    char *result = malloc(len1+len2+1);
     memcpy(result, s1, len1);
-    memcpy(result+len1, s2, len2+1);//+1 to copy the null-terminator
+    memcpy(result+len1, s2, len2+1);
+    
     return result;
 }
 
@@ -116,19 +116,49 @@ void ejecutarArchivo (  char* ruta , char* argumentos[] ) {
 }
 
 void cdBuiltin ( char* argumento ) {
-	int res;
-	if ( strncmp ( argumento , "/" , 1 ) == 0 )
-		res=chdir(argumento);
-	else if ( strncmp( argumento , ".." , 2 ) == 0 )
-		res=chdir(argumento);
-	else{
-		res=chdir(concat("./",argumento));
-	}
-
-	if( res != 0 ) {
+	int changeDir;
+    changeDir=chdir(argumento);
+	if( changeDir != 0 ) {
 		fprintf ( stderr , "ERRNO: %d\n" , errno );
     	perror ( "Error" );
 	}
+}
+
+
+char *acondicionarHome(char directorioDeTrabajo[]){
+	char *dir=directorioDeTrabajo;
+	char *pointer;
+	char *pointer2;
+	int barra=(int)'/';
+
+	pointer=strstr(dir , "/home/");
+	int contador=0;
+	if ( pointer != NULL ){
+		pointer2=strchr(dir,barra);
+		pointer2=strchr(pointer2+1,barra);
+		
+		if (pointer2!=NULL){
+			pointer2=strchr(pointer2+1,barra);
+			char *enie="~";
+			if(pointer2!=NULL){
+				char *pointer3=concat(enie,pointer2);
+				return pointer3;
+			}
+			else{
+				char *pointer3=concat(enie," $");
+				return pointer3;
+				
+			}
+			
+		}
+		else{
+			return dir;
+		}
+	}
+	else{
+		return dir;
+	}
+
 }
 
 
@@ -147,23 +177,40 @@ int main () {
 	int cantidadpaths=getPaths ( paths );
     while ( ! feof ( stdin ) ) {
     	getcwd(actualdir, 100);
-    	LOG_RED(concat(concat(getlogin(),"@"),hostname)); //imprimo el uid/gid
-    	LOG_BLUE(actualdir);
+    	LOG_RED(getlogin(), hostname); //imprimo el uid/gid
+    	strcat(actualdir, " $");
+    	char *dir=acondicionarHome(actualdir);
+
+    	LOG_BLUE(dir);
     	strcpy(buffer, "\n");
     	fgets(buffer,1024,stdin);
     	if (strcmp(buffer,"\n")==0) {
     		continue;
     	}
+
     	else{
     		argc=parseArguments(argv,buffer);
-    		if (strcmp(argv[0],"cd") == 0 && argc>1){
-    			cdBuiltin(argv[1]);
+    		if( strcmp (argv[0] , "cd") == 0 && argc>2){
+    			char carpeta[100]="";
+    			for (int i = 1; i < argc; ++i){
+    				strcat(carpeta , argv[i]);
+    				if(argc!=i+1){
+    					strcat(carpeta," ");
+    				}
+    			}
+    			cdBuiltin(carpeta);
     			continue;
     		}
-    		if (strcmp(argv[0],"cd") == 0 && argc==1){
+    		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) {
+    			cdBuiltin ( argv[1] );
     			continue;
     		}
-    		if (strcmp(argv[0],"exit") == 0 ){
+     		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) {
+    			cdBuiltin(getenv("HOME"));
+    			continue;
+    		}
+
+    		if ( strcmp ( argv[0] , "exit" ) == 0 ) {
     			return 0;
     		}
     		if (strcmp(argv[0],"..") == 0 ){
@@ -173,7 +220,6 @@ int main () {
     		clasificacion=getClasificacionComando( argv[0] );
     		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
     		if (strcmp(ruta,"[error]") != 0 ){
-    			printf("%s\n", "me re forkee");
     			pid = fork();
     			if (pid == 0) {
     				ejecutarArchivo( ruta , argv );
@@ -185,5 +231,6 @@ int main () {
 
     	}		
     }
+    printf("\n");
 	return 0;
 }
