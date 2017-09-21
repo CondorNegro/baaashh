@@ -21,13 +21,12 @@
 #define LOG_GREEN(X) printf ( "%s %s %s" , Color_Green , X , Color_end )
 
 char* concat ( const char *s1, const char *s2) {
-    const size_t len1 = strlen(s1);
-    const size_t len2 = strlen(s2);
-    char *result = malloc(len1+len2+1);
-    memcpy(result, s1, len1);
-    memcpy(result+len1, s2, len2+1);
-    
-    return result;
+	char auxiliar[500];
+	strcpy(auxiliar, s1);
+	strcat(auxiliar,s2);
+    char *resultado;
+    resultado=auxiliar;
+    return resultado;
 }
 
 int parseArguments ( char* argv[] , char* cadena ) {
@@ -56,7 +55,7 @@ int getPaths ( char* paths[] ) {
 			break;
 	}
 	for ( int i = 0 ; i < pathcounter ; i++ ) {
-		paths[i] = concat( pathsaux[i] , "/" );
+		paths[i] = pathsaux[i];
 	}
 	return pathcounter;
 }
@@ -66,8 +65,8 @@ int getPaths ( char* paths[] ) {
 char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* clasificacion, char* actualdir ) {
 	if ( strcmp(clasificacion,"comando") == 0 ) {
 		for ( int i = 0 ; i < cantidad ; i++ ) {
-			if ( access( concat ( paths[i] , comando ) , X_OK ) == 0 ) {
-			return concat( paths[i] , comando );
+			if ( access ( concat ( concat ( paths[i] , "/" ) , comando ) , X_OK ) == 0 ) {
+			return concat ( concat ( paths[i] , "/" ) , comando );
 			}
 		}
 	}
@@ -77,8 +76,8 @@ char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* c
 		}
 	}
 	else if ( strcmp(clasificacion,"relativo") == 0 || strcmp(clasificacion,"relativo-r") == 0 ){
-		if ( access( concat(concat(actualdir,"/"),comando) , X_OK ) == 0 ) {
-			return concat(concat(actualdir,"/"),comando);
+		if ( access ( comando , X_OK ) == 0 ) {
+			return comando;
 		}
 	}
 	
@@ -157,6 +156,99 @@ char *acondicionarHome(char directorioDeTrabajo[]){
 
 }
 
+/**
+ * Verifica si se debe redireccionar la entrada o la salida estandar.
+ * @param argv Arreglo que contiene el comando y los argumentos ingresados.
+ * @param fileName Almacena el nombre del archivo del que se lee, o en el que se escribe la salida.
+ * @return Devuelve 0 si no hay que redireccionar, 1 si hay que redireccionar la entrada, y 2 si hay que redireccionar la salida.
+ */
+
+int checkRedirect(char* argv[], char fileName[]){
+	int i;
+	for (i = 0; i < 100; i++){
+		char *token;     // para aceptar tanto ">archivo" como "> archivo"
+		token=strtok( argv[i] , ">" );
+		if(argv[i] == NULL){
+			fileName = NULL;
+			return 0;
+		}
+		else if (!strcmp(argv[i], "<")){
+			strcpy(fileName, argv[i+1]);
+			argv[i] = NULL;		
+			argv[i+1] = NULL;
+			return 1;
+		}
+		else if (!strcmp(argv[i], ">")){
+			strcpy(fileName, argv[i+1]);
+			argv[i] = NULL;	
+			argv[i+1] = NULL;
+			return 2;
+		}
+		
+		else if (!strncmp(argv[i], ">",1))
+		{
+			strcpy(fileName, token);
+			argv[i] = NULL;	
+
+			return 2;
+		}
+		else if (!strncmp(argv[i], "<",1))
+		{
+			strcpy(fileName, token);
+			argv[i] = NULL;	
+
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
+ * Modifica la entrada estándar.
+ * @param fileName nombre del archivo de entrada.
+ */
+void inPut(char fileName[]){
+	int fid;
+	int flags,perm;
+	flags = O_RDONLY;
+	perm = S_IWUSR|S_IRUSR;
+	
+	close(STDIN_FILENO);
+	fid = open(fileName, flags, perm);	
+	if (fid<0) {
+		perror("open");
+		exit(1);
+	}	
+	if (dup(fid)<0) {
+		perror("dup");
+		exit(1);
+	}
+	close(fid);	
+}
+
+/**
+ * Modifica la salida estándar.
+ * @param fileName nombre del archivo donde se envía la salida.
+ */
+void outPut(char fileName[]){
+	int fid;
+	int flags,perm;
+	flags = O_WRONLY|O_CREAT|O_TRUNC;
+	perm = S_IWUSR|S_IRUSR;
+	
+	fid = open(fileName, flags, perm);	
+	if (fid<0) {
+		perror("open");
+		exit(1);
+	}
+	close(STDOUT_FILENO);
+	if (dup(fid)<0) {
+		perror("dup");
+		exit(1);
+	}
+	close(fid);
+}
+
 
 extern int errno ;	
 int main () {
@@ -171,6 +263,11 @@ int main () {
 	char * clasificacion;
 	char * ruta;
 	int cantidadpaths=getPaths ( paths );
+	char fileName[100];
+	int flagRedirect = 0;
+	int volatile contadorHijos=0;
+	int volatile contadorHijosAnterior=-1;
+	
     while ( ! feof ( stdin ) ) {
     	getcwd(actualdir, 100);
     	LOG_RED(getlogin(), hostname); //imprimo el uid/gid
@@ -215,14 +312,56 @@ int main () {
     		}
     		clasificacion=getClasificacionComando( argv[0] );
     		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
+    		flagRedirect = checkRedirect(argv, fileName);
     		if (strcmp(ruta,"[error]") != 0 ){
+    			contadorHijosAnterior=contadorHijos;
+    			contadorHijos++;
+    			
     			pid = fork();
+
     			if (pid == 0) {
-    				ejecutarArchivo( ruta , argv );
+    				if(flagRedirect == 2){
+						outPut(fileName);
+					}
+					else if(flagRedirect == 1){						
+						freopen(fileName,"r",stdin);
+					}
+    				
+    				if(strcmp(argv[argc-1],"&")!=0){
+    					ejecutarArchivo( ruta , argv );
+
+    					
+    				}
+    				else{
+    					
+    					char *argvAux[argc];
+    					for (int i = 0; i < argc-1; ++i){
+    						argvAux[i]=argv[i];
+    						
+    					}
+    					ejecutarArchivo( ruta , argvAux );
+
+    					
+    				}
+    				
     				exit(0);
+    				
     			}
-    			else
-    				wait(0);
+    			else{
+    				if(strcmp(argv[argc-1],"&")!=0){
+    					
+    					wait(0);
+    					contadorHijos=0;
+    					
+    					
+    				}
+    				else{
+    					printf ("[%d]   %d\n", contadorHijos , pid );
+    					    					
+    				}
+    					
+    			}
+    				
     		}
 
     	}		
