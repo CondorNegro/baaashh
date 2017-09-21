@@ -4,7 +4,7 @@ cosas para agregar al programa:
 - nombres relativos con PATH
 -logica de pregunta 5
 - imagen pregunta 6.
-- apLICAR LO DE PSTREE A BASH
+
 
 Ejercicio parte 3 -> completar el uno (libro).
 Ejercicio parte 4-> completar el uno(libro).
