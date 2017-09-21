@@ -1,7 +1,7 @@
 cosas para agregar al programa:
 
 - seguir lo de comando y nombre de diretorio
-- nombres relativos con PATH
+
 -logica de pregunta 5
 - imagen pregunta 6.
 
@@ -18,7 +18,7 @@ Ejercicio parte 4-> completar el uno(libro).
 
 
 
--malloc
--cd builtin
--falta el coso de la ñ
+-malloc (ver)
+- poner prolijo y con estilo
+
 -falta Parte B y C
