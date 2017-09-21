@@ -18,7 +18,8 @@ Ejercicio parte 4-> completar el uno(libro).
 
 
 
--malloc (ver)
+
 - poner prolijo y con estilo
 
 -falta Parte B y C
+-falta &pegado, el ls solo, y el segmentationfault
