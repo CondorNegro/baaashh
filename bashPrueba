@@ -281,7 +281,6 @@ int main () {
 
     	else{
     		argc=parseArguments(argv,buffer);
-    		flagRedirect = checkRedirect(argv, fileName);
     		if( strcmp (argv[0] , "cd") == 0 && argc>2){
     			char carpeta[100]="";
     			for (int i = 1; i < argc; ++i){
@@ -311,6 +310,7 @@ int main () {
     		}
     		clasificacion=getClasificacionComando( argv[0] );
     		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
+		flagRedirect = checkRedirect(argv, fileName);
     		if (strcmp(ruta,"[error]") != 0 ){
     			pid = fork();
     			if (pid == 0) {
