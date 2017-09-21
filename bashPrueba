@@ -17,7 +17,7 @@
 #define Color_end "\033[0m" // To flush out prev settings
 #define Color_Green "\x1b[32m"
 #define LOG_BLUE(X) printf ( "%s %s %s", Color_Blue , X , Color_end )
-#define LOG_RED(X) printf ( "%s %s %s" , Color_Red , X , Color_end )
+#define LOG_RED(X,Z) printf ( "%s %s@%s %s" , Color_Red , X , Z , Color_end )
 #define LOG_GREEN(X) printf ( "%s %s %s" , Color_Green , X , Color_end )
 
 char* concat (const char *s1, const char *s2) {
@@ -140,15 +140,15 @@ int main () {
 	int cantidadpaths=getPaths ( paths );
     while ( ! feof ( stdin ) ) {
     	getcwd(actualdir, 100);
-    	LOG_RED(concat(concat(getlogin(),"@"),hostname)); //imprimo el uid/gid
+    	LOG_RED(getlogin(), hostname); //imprimo el uid/gid
     	LOG_BLUE(actualdir);
     	strcpy(buffer, "\n");
     	fgets(buffer,1024,stdin);
     	if (strcmp(buffer,"\n")==0) {
     		continue;
     	}
-    	else{
-    		argc=parseArguments(argv,buffer);
+    	else {
+    		argc = parseArguments ( argv , buffer );
     		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) {
     			cdBuiltin ( argv[1] );
     			continue;
@@ -159,8 +159,8 @@ int main () {
     		if ( strcmp ( argv[0] , "exit" ) == 0 ) {
     			return 0;
     		}
-    		if (strcmp(argv[0],"..") == 0 ){
-    			printf("%s\n", "..: No se encontro la orden");
+    		if (strcmp( argv[0] , ".." ) == 0 ) {
+    			printf( "%s\n" , "..: No se encontro la orden" );
     			continue;
     		}
     		clasificacion=getClasificacionComando( argv[0] );
