@@ -15,3 +15,7 @@ Ejercicio parte 4-> completar el uno(libro).
 - parse command() ->funcion nombre
 - Uso de asserts
 -Frashmeat.net
+
+
+
+-malloc
