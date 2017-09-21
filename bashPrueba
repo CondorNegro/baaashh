@@ -1,4 +1,3 @@
-
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
@@ -317,6 +316,9 @@ int main () {
     			if (pid == 0) {
     				if(flagRedirect == 2){
 						outPut(fileName);
+					}
+					else if(flagRedirect == 1){						
+						freopen(fileName,"r",stdin);
 					}
     				ejecutarArchivo( ruta , argv );
     				exit(0);
