@@ -143,12 +143,14 @@ char * getClasificacionComando ( char* comando ) {  // Clasifica el comando en a
  * @return void
  */
 void ejecutarArchivo (  char* ruta , char* argumentos[] ) {
+	
 	execv( ruta , argumentos ); //Utilización de execv.
 	if( errno != 0 ) {  		//Error en caso de no poder ejecutarse el archivo.
 		fprintf ( stderr , "ejecutarArchivo ERRNO: %d\n" , errno );
     	perror ( "Error" );
     	exit(EXIT_FAILURE);
 	}
+
 
 }
 
@@ -325,17 +327,17 @@ int main () {
 	int cantidadpaths= getPaths ( paths );
 	char fileName[100];
 	int flagRedirect = 0;
-
+	int flagPlano=2;
 	int volatile contadorHijos=0; //Para saber el numero de hijos.
 	int volatile contadorHijosAnterior=-1; //Por estetica de la consola. Mostrar ejecución de hilo anterior.
 	
     while ( ! feof ( stdin ) ) { 		//Ejecución siempre y cuando no aparezca un Ctrl+D.
-    	getcwd(actualdir, 100);        //Directorio de trabajo almacenado en actualdir.
-    	LOG_RED(getlogin(), hostname); //Imprime el uid/gid
-    	strcat(actualdir, " $");
-    	char *dir=acondicionarHome(actualdir);
-
-    	LOG_BLUE(dir);
+	    getcwd(actualdir, 100);        //Directorio de trabajo almacenado en actualdir.
+	    LOG_RED(getlogin(), hostname); //Imprime el uid/gid
+	    strcat(actualdir, " $");
+	    char *dir=acondicionarHome(actualdir);
+	    LOG_BLUE(dir);
+	    
     	strcpy(buffer, "\n"); 		 
     	fgets(buffer,1024,stdin);
     	if (strcmp(buffer,"\n")==0) { //Si se ingresa '\n'.
@@ -380,6 +382,18 @@ int main () {
     		if (strcmp(ruta,"[error]") != 0 ){
     			contadorHijosAnterior=contadorHijos;
     			contadorHijos++;
+    			
+    			if(strcmp(argv[argc-1],"&") != 0){
+    				flagPlano=1;
+    			}
+    			else{
+    				flagPlano=2;
+    				argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
+    									//debido al ampersand.
+    				argc--;
+    			}
+
+    			flagRedirect = checkRedirect(argv, fileName);
     			pid = fork();
     			  			
 
@@ -387,8 +401,8 @@ int main () {
     				
     				
     				
-    				if(strcmp(argv[argc-1],"&")!=0){ //No es en segundo plano la ejecución.
-    					flagRedirect = checkRedirect(argv, fileName);
+    				if(flagPlano==1){ //No es en segundo plano la ejecución.
+    					
     					if(flagRedirect == 2){
 							outPut(fileName);
 						}
@@ -399,20 +413,15 @@ int main () {
     					
     				}
     				else{
+    				
     					
-    					char *argvAux[argc];
-    					for (int i = 0; i < argc-1; ++i){ //Para evitar errores de argumentos en los programas
-    													 //debido al ampersand.
-    						argvAux[i]=argv[i];
-    					}
-    					flagRedirect = checkRedirect(argv, fileName);
     					if(flagRedirect == 2){
 							outPut(fileName);
 						}
 						else if(flagRedirect == 1){						
 							freopen(fileName,"r",stdin);
 						}
-    					ejecutarArchivo( ruta , argvAux );
+    					ejecutarArchivo( ruta , argv );
     					
     					
     				}
@@ -421,7 +430,7 @@ int main () {
     				
     			}
     			else{
-    				if(strcmp(argv[argc-1],"&")!=0){ //Ejecucion de proceso hijo es en primer plano.
+    				if(flagPlano==1){ //Ejecucion de proceso hijo es en primer plano.
     					wait(0); //Wait.
     					
     					contadorHijos=0;    					
@@ -432,7 +441,9 @@ int main () {
     			}	
     		}
 
-    	}		
+    	}
+    	
+	    	
     }
     printf("\n");
 	return 0;
