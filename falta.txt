@@ -1,6 +1,5 @@
 cosas para agregar al programa:
 
-- semantica de que el que primero encuentra lo intenta ejecutar.
 - seguir lo de comando y nombre de diretorio
 - nombres relativos con PATH
 -logica de pregunta 5
