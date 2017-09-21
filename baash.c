@@ -76,16 +76,12 @@ char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* c
 			return comando;
 		}
 	}
-	else if ( strcmp(clasificacion,"relativo") == 0 ){
+	else if ( strcmp(clasificacion,"relativo") == 0 || strcmp(clasificacion,"relativo-r") == 0 ){
 		if ( access( concat(concat(actualdir,"/"),comando) , X_OK ) == 0 ) {
 			return concat(concat(actualdir,"/"),comando);
 		}
 	}
-	else if ( strcmp(clasificacion,"relativo-r") == 0 ){
-		if ( access( concat(concat(actualdir,"/"),comando) , X_OK ) == 0 ) {
-			return concat(concat(actualdir,"/"),comando);
-		}
-	}
+	
 	if( errno != 0 ) {
 		fprintf ( stderr , "getRutaEjecucion ERRNO: %d\n" , errno );
     	perror ( "Error" );
