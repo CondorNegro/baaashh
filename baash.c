@@ -12,34 +12,54 @@
 #include <sys/wait.h>
 
 
-#define Color_Red "\x1B[31m"
-#define Color_Blue "\033[22;34m" // Color Start
-#define Color_end "\033[0m" // To flush out prev settings
+#define Color_Red "\x1B[31m"      //Color del hostname y nombre de usuario.
+#define Color_Blue "\033[22;34m" // Color del directorio.
+#define Color_end "\033[0m"      // Para eliminar configuraciones anteriores.
 #define Color_Green "\x1b[32m"
-#define LOG_BLUE(X) printf ( "%s %s %s", Color_Blue , X , Color_end )
-#define LOG_RED(X,Z) printf ( "%s %s@%s %s" , Color_Red , X , Z , Color_end )
+#define LOG_BLUE(X) printf ( "%s %s %s", Color_Blue , X , Color_end ) //Funciones para aplicar el color.
+#define LOG_RED(X,Z) printf ( "%s %s@%s %s" , Color_Red , X , Z , Color_end ) 
 #define LOG_GREEN(X) printf ( "%s %s %s" , Color_Green , X , Color_end )
 
+
+/**
+ * Se encarga de concatenar dos cadenas de caracteres, sin modificar ninguna de las dos. 
+ * @param s1 Puntero a la primer cadena.
+ * @param s2 Puntero a la segunda cadena.
+ * @return char Cadena producto de la concatencación.
+ */
 char* concat ( const char *s1, const char *s2) {
-	char auxiliar[500];
-	strcpy(auxiliar, s1);
+	char auxiliar[500]; //Compilador reserva la memoria. (Es una variante a malloc sin necesidad del free).
+	strcpy(auxiliar, s1); 
 	strcat(auxiliar,s2);
     char *resultado;
     resultado=auxiliar;
     return resultado;
 }
 
-int parseArguments ( char* argv[] , char* cadena ) {
+/**
+ * Se encarga de parsear el comando ingresado como un conjunto de argumentos. 
+ * @param argv Arreglo donde se colocarán los argumentos hallados.
+ * @param cadena Comando ingresado.
+ * @return int Numero de argumentos.
+ */
+int parse_Command( char* argv[] , char* cadena ) {
 	int argscounter = 0;
 	argv[0] = strtok( cadena , " \n" );
 	for ( argscounter = 1 ; argscounter < 20 ; argscounter++ ) {
-		argv[argscounter] = strtok ( NULL , " \n" );
+		argv[argscounter] = strtok ( NULL , " \n" ); //Para la separación se usa el salto de línea.
 		if ( argv[argscounter] == NULL )
 			break;
 	}
-	return argscounter;
+	return argscounter; //Cantidad de argumentos. (argc).
 }
 
+
+/**
+ * Se encarga de obtener el arreglo de Paths.
+ * @param paths Arreglo donde se colocarán las direcciones que se encuentran en la variable de entorno PATH.
+
+ * @return int Numero de Paths.
+ */
 int getPaths ( char* paths[] ) {
 	int pathcounter = 0;
 	char *pathsaux[25];
@@ -60,8 +80,15 @@ int getPaths ( char* paths[] ) {
 	return pathcounter;
 }
 
-
-
+/**
+ * Se encarga de encontrar la ruta para ejecutar el comando, de acuerdo a si se otorgó PATH relativo o absoluto. 
+ * @param paths Arreglo de punteros a las direcciones contenidas en el PATH.
+ * @param cantidad Cantidad de direcciones que componen el PATH.
+ * @param comando Puntero a la cadena del comando.
+ * @param clasificacion Puntero a la cadena de la clasificacion del comando.
+ * @param actualdir Directorio actual de trabajo (pwd).
+ * @return char Ruta de ejecucion del comando.
+ */
 char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* clasificacion, char* actualdir ) {
 	if ( strcmp(clasificacion,"comando") == 0 ) {
 		for ( int i = 0 ; i < cantidad ; i++ ) {
@@ -71,7 +98,7 @@ char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* c
 		}
 	}
 	else if ( strcmp(clasificacion,"absoluto") == 0 ){
-		if ( access( comando , X_OK ) == 0 ) {
+		if ( access( comando , X_OK ) == 0 ) { //Access intenta ejecutar el comando gracias al parámetro X_OK.
 			return comando;
 		}
 	}
@@ -81,14 +108,21 @@ char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* c
 		}
 	}
 	
-	if( errno != 0 ) {
+	if( errno != 0 ) { //No encontró la ruta de ejecucion.
 		fprintf ( stderr , "getRutaEjecucion ERRNO: %d\n" , errno );
     	perror ( "Error" );
     	return "[error]";
 	}
 }
 
-char * getClasificacionComando ( char* comando ) {       // Clasifica el comando en absoluto , relativo , relativo-r o comando
+
+/**
+ * Se encarga de clasificar el comando en absoluto (/) , relativo (./) , relativo-r (../) o comando.
+ * @param comando Es el comando a clasificar.
+
+ * @return char* Puntero al string de clasificacion.
+ */
+char * getClasificacionComando ( char* comando ) {  // Clasifica el comando en absoluto , relativo , relativo-r o comando.
 	char * clasificacion;
 	if ( strncmp ( comando , "/" , 1 ) == 0 )
 		clasificacion="absoluto";
@@ -101,24 +135,45 @@ char * getClasificacionComando ( char* comando ) {       // Clasifica el comando
 	return clasificacion;
 }
 
+
+/**
+ * Se encarga de ejecutar el archivo pasado como parametro, junto con sus argumentos.
+ * @param ruta Es la ruta del archivo a ejecutar.
+
+ * @return void
+ */
 void ejecutarArchivo (  char* ruta , char* argumentos[] ) {
-	execv( ruta , argumentos );
-	if( errno != 0 ) {
+	execv( ruta , argumentos ); //Utilización de execv.
+	if( errno != 0 ) {  		//Error en caso de no poder ejecutarse el archivo.
 		fprintf ( stderr , "ejecutarArchivo ERRNO: %d\n" , errno );
     	perror ( "Error" );
     	exit(EXIT_FAILURE);
 	}
+
 }
 
+
+/**
+ * Gestor de operaciones del comando interno cd.
+ * @param argumento Puntero al directorio al cual se quiere ir.
+
+ * @return void
+ */
 void cdBuiltin ( char* argumento ) {
 	int changeDir;
-    changeDir=chdir(argumento);
-	if( changeDir != 0 ) {
+    changeDir=chdir(argumento); //Cambio de directorio.
+	if( changeDir != 0 ) { //Manejo de errores del cambio de directorio.
 		fprintf ( stderr , "ERRNO: %d\n" , errno );
     	perror ( "Error" );
 	}
 }
 
+/**
+ * Remplaza el /home/username por el caracter ~.
+ * @param directorioDeTrabajo Arreglo que contiene el directorio actual de trabajo.
+ 
+ * @return Devuelve el directorio a imprimir por consola.
+ */
 
 char *acondicionarHome(char directorioDeTrabajo[]){
 	char *dir=directorioDeTrabajo;
@@ -126,21 +181,22 @@ char *acondicionarHome(char directorioDeTrabajo[]){
 	char *pointer2;
 	int barra=(int)'/';
 
-	pointer=strstr(dir , "/home/");
+
+	pointer=strstr(dir , "/home/"); //Detecta presencia de /home/ en el directorio.
 	int contador=0;
 	if ( pointer != NULL ){
 		pointer2=strchr(dir,barra);
 		pointer2=strchr(pointer2+1,barra);
 		
 		if (pointer2!=NULL){
-			pointer2=strchr(pointer2+1,barra);
+			pointer2=strchr(pointer2+1,barra); //Detecta la cantidad de barras "/".
 			char *enie="~";
 			if(pointer2!=NULL){
-				char *pointer3=concat(enie,pointer2);
+				char *pointer3=concat(enie,pointer2); //Reemplazo.
 				return pointer3;
 			}
 			else{
-				char *pointer3=concat(enie," $");
+				char *pointer3=concat(enie," $"); //Caso especial: ~ $
 				return pointer3;
 				
 			}
@@ -155,6 +211,8 @@ char *acondicionarHome(char directorioDeTrabajo[]){
 	}
 
 }
+
+
 
 /**
  * Verifica si se debe redireccionar la entrada o la salida estandar.
@@ -250,7 +308,9 @@ void outPut(char fileName[]){
 }
 
 
-extern int errno ;	
+extern int errno ;
+
+
 int main () {
 	int argc;
 	pid_t pid;
@@ -262,28 +322,30 @@ int main () {
 	char actualdir[100];
 	char * clasificacion;
 	char * ruta;
-	int cantidadpaths=getPaths ( paths );
+	int cantidadpaths= getPaths ( paths );
 	char fileName[100];
 	int flagRedirect = 0;
-	int volatile contadorHijos=0;
-	int volatile contadorHijosAnterior=-1;
+
+	int volatile contadorHijos=0; //Para saber el numero de hijos.
+	int volatile contadorHijosAnterior=-1; //Por estetica de la consola. Mostrar ejecución de hilo anterior.
 	
-    while ( ! feof ( stdin ) ) {
-    	getcwd(actualdir, 100);
-    	LOG_RED(getlogin(), hostname); //imprimo el uid/gid
+    while ( ! feof ( stdin ) ) { 		//Ejecución siempre y cuando no aparezca un Ctrl+D.
+    	getcwd(actualdir, 100);        //Directorio de trabajo almacenado en actualdir.
+    	LOG_RED(getlogin(), hostname); //Imprime el uid/gid
     	strcat(actualdir, " $");
     	char *dir=acondicionarHome(actualdir);
 
     	LOG_BLUE(dir);
-    	strcpy(buffer, "\n");
+    	strcpy(buffer, "\n"); 		 
     	fgets(buffer,1024,stdin);
-    	if (strcmp(buffer,"\n")==0) {
+    	if (strcmp(buffer,"\n")==0) { //Si se ingresa '\n'.
     		continue;
     	}
 
     	else{
-    		argc=parseArguments(argv,buffer);
-    		if( strcmp (argv[0] , "cd") == 0 && argc>2){
+    		argc=parse_Command(argv,buffer);
+    		if( strcmp (argv[0] , "cd") == 0 && argc>2){ // Comando interno cd con directorios que presentan 
+    													// espacios en blanco.
     			char carpeta[100]="";
     			for (int i = 1; i < argc; ++i){
     				strcat(carpeta , argv[i]);
@@ -294,19 +356,21 @@ int main () {
     			cdBuiltin(carpeta);
     			continue;
     		}
-    		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) {
+    		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) { // Comando interno cd con directorios que no presentan 
+    															// espacios en blanco.
     			cdBuiltin ( argv[1] );
     			continue;
     		}
-     		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) {
+     		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) { //Ingreso de ~.
+     																							//Ingreso de cd (solamente).
     			cdBuiltin(getenv("HOME"));
     			continue;
     		}
 
-    		if ( strcmp ( argv[0] , "exit" ) == 0 ) {
+    		if ( strcmp ( argv[0] , "exit" ) == 0 ) { //Ingreso de "exit".
     			return 0;
     		}
-    		if (strcmp(argv[0],"..") == 0 ){
+    		if (strcmp(argv[0],"..") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
     			printf("%s\n", "..: No se encontro la orden");
     			continue;
     		}
@@ -317,9 +381,10 @@ int main () {
     			contadorHijosAnterior=contadorHijos;
     			contadorHijos++;
     			
-    			pid = fork();
+    			pid = fork(); //Fork.
 
-    			if (pid == 0) {
+    			if (pid == 0) { //Proceso hijo.
+    				
     				if(flagRedirect == 2){
 						outPut(fileName);
 					}
@@ -327,7 +392,8 @@ int main () {
 						freopen(fileName,"r",stdin);
 					}
     				
-    				if(strcmp(argv[argc-1],"&")!=0){
+    				if(strcmp(argv[argc-1],"&")!=0){ //No es en segundo plano la ejecución.
+    					
     					ejecutarArchivo( ruta , argv );
 
     					
@@ -335,12 +401,13 @@ int main () {
     				else{
     					
     					char *argvAux[argc];
-    					for (int i = 0; i < argc-1; ++i){
+    					for (int i = 0; i < argc-1; ++i){ //Para evitar errores de argumentos en los programas
+    													 //debido al ampersand.
     						argvAux[i]=argv[i];
-    						
     					}
+    					
     					ejecutarArchivo( ruta , argvAux );
-
+    					
     					
     				}
     				
@@ -348,20 +415,15 @@ int main () {
     				
     			}
     			else{
-    				if(strcmp(argv[argc-1],"&")!=0){
+    				if(strcmp(argv[argc-1],"&")!=0){ //Ejecucion de proceso hijo es en primer plano.
+    					wait(0); //Wait.
     					
-    					wait(0);
-    					contadorHijos=0;
-    					
-    					
+    					contadorHijos=0;    					
     				}
-    				else{
-    					printf ("[%d]   %d\n", contadorHijos , pid );
-    					    					
-    				}
-    					
-    			}
-    				
+    				else{ //Ejecucion de proceso hijo es en segundo plano. No espera.
+    					printf ("[%d]   %d\n", contadorHijos , pid );    					
+    				}		
+    			}		
     		}
 
     	}		
