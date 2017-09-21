@@ -10,7 +10,6 @@ Ejercicio parte 3 -> completar el uno (libro).
 Ejercicio parte 4-> completar el uno(libro).
 
 
--chdirg
 -PArte C-> deberia soportar un solo de los 4 operadores
 - dup
 - parse command() ->funcion nombre
