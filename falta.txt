@@ -1,0 +1,19 @@
+cosas para agregar al programa:
+
+- semantica de que el que primero encuentra lo intenta ejecutar.
+- seguir lo de comando y nombre de diretorio
+- nombres relativos con PATH
+-logica de pregunta 5
+- imagen pregunta 6.
+- apLICAR LO DE PSTREE A BASH
+
+Ejercicio parte 3 -> completar el uno (libro).
+Ejercicio parte 4-> completar el uno(libro).
+
+
+-chdirg
+-PArte C-> deberia soportar un solo de los 4 operadores
+- dup
+- parse command() ->funcion nombre
+- Uso de asserts
+-Frashmeat.net
