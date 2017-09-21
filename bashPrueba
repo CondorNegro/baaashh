@@ -20,14 +20,13 @@
 #define LOG_RED(X,Z) printf ( "%s %s@%s %s" , Color_Red , X , Z , Color_end )
 #define LOG_GREEN(X) printf ( "%s %s %s" , Color_Green , X , Color_end )
 
-char* concat (const char *s1, const char *s2) {
-    const size_t len1 = strlen(s1);
-    const size_t len2 = strlen(s2);
-    char *result = malloc(len1+len2+1);//+1 for the zero-terminator
-    //in real code you would check for errors in malloc here
-    memcpy(result, s1, len1);
-    memcpy(result+len1, s2, len2+1);//+1 to copy the null-terminator
-    return result;
+char* concat ( const char *s1, const char *s2) {
+	char auxiliar[500];
+	strcpy(auxiliar, s1);
+	strcat(auxiliar,s2);
+    char *resultado;
+    resultado=auxiliar;
+    return resultado;
 }
 
 int parseArguments ( char* argv[] , char* cadena ) {
@@ -56,7 +55,7 @@ int getPaths ( char* paths[] ) {
 			break;
 	}
 	for ( int i = 0 ; i < pathcounter ; i++ ) {
-		paths[i] = concat( pathsaux[i] , "/" );
+		paths[i] = pathsaux[i];
 	}
 	return pathcounter;
 }
@@ -66,8 +65,8 @@ int getPaths ( char* paths[] ) {
 char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* clasificacion, char* actualdir ) {
 	if ( strcmp(clasificacion,"comando") == 0 ) {
 		for ( int i = 0 ; i < cantidad ; i++ ) {
-			if ( access( concat ( paths[i] , comando ) , X_OK ) == 0 ) {
-			return concat( paths[i] , comando );
+			if ( access ( concat ( concat ( paths[i] , "/" ) , comando ) , X_OK ) == 0 ) {
+			return concat ( concat ( paths[i] , "/" ) , comando );
 			}
 		}
 	}
@@ -76,16 +75,12 @@ char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* c
 			return comando;
 		}
 	}
-	else if ( strcmp(clasificacion,"relativo") == 0 ){
-		if ( access( concat(concat(actualdir,"/"),comando) , X_OK ) == 0 ) {
-			return concat(concat(actualdir,"/"),comando);
+	else if ( strcmp(clasificacion,"relativo") == 0 || strcmp(clasificacion,"relativo-r") == 0 ){
+		if ( access ( comando , X_OK ) == 0 ) {
+			return comando;
 		}
 	}
-	else if ( strcmp(clasificacion,"relativo-r") == 0 ){
-		if ( access( concat(concat(actualdir,"/"),comando) , X_OK ) == 0 ) {
-			return concat(concat(actualdir,"/"),comando);
-		}
-	}
+	
 	if( errno != 0 ) {
 		fprintf ( stderr , "getRutaEjecucion ERRNO: %d\n" , errno );
     	perror ( "Error" );
@@ -125,6 +120,43 @@ void cdBuiltin ( char* argumento ) {
 }
 
 
+char *acondicionarHome(char directorioDeTrabajo[]){
+	char *dir=directorioDeTrabajo;
+	char *pointer;
+	char *pointer2;
+	int barra=(int)'/';
+
+	pointer=strstr(dir , "/home/");
+	int contador=0;
+	if ( pointer != NULL ){
+		pointer2=strchr(dir,barra);
+		pointer2=strchr(pointer2+1,barra);
+		
+		if (pointer2!=NULL){
+			pointer2=strchr(pointer2+1,barra);
+			char *enie="~";
+			if(pointer2!=NULL){
+				char *pointer3=concat(enie,pointer2);
+				return pointer3;
+			}
+			else{
+				char *pointer3=concat(enie," $");
+				return pointer3;
+				
+			}
+			
+		}
+		else{
+			return dir;
+		}
+	}
+	else{
+		return dir;
+	}
+
+}
+
+
 extern int errno ;	
 int main () {
 	int argc;
@@ -141,32 +173,48 @@ int main () {
     while ( ! feof ( stdin ) ) {
     	getcwd(actualdir, 100);
     	LOG_RED(getlogin(), hostname); //imprimo el uid/gid
-    	LOG_BLUE(actualdir);
+    	strcat(actualdir, " $");
+    	char *dir=acondicionarHome(actualdir);
+
+    	LOG_BLUE(dir);
     	strcpy(buffer, "\n");
     	fgets(buffer,1024,stdin);
     	if (strcmp(buffer,"\n")==0) {
     		continue;
     	}
-    	else {
-    		argc = parseArguments ( argv , buffer );
+
+    	else{
+    		argc=parseArguments(argv,buffer);
+    		if( strcmp (argv[0] , "cd") == 0 && argc>2){
+    			char carpeta[100]="";
+    			for (int i = 1; i < argc; ++i){
+    				strcat(carpeta , argv[i]);
+    				if(argc!=i+1){
+    					strcat(carpeta," ");
+    				}
+    			}
+    			cdBuiltin(carpeta);
+    			continue;
+    		}
     		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) {
     			cdBuiltin ( argv[1] );
     			continue;
     		}
-     		if ( strcmp ( argv[0] , "cd" ) == 0 && argc == 1 ) {
+     		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) {
+    			cdBuiltin(getenv("HOME"));
     			continue;
     		}
+
     		if ( strcmp ( argv[0] , "exit" ) == 0 ) {
     			return 0;
     		}
-    		if (strcmp( argv[0] , ".." ) == 0 ) {
-    			printf( "%s\n" , "..: No se encontro la orden" );
+    		if (strcmp(argv[0],"..") == 0 ){
+    			printf("%s\n", "..: No se encontro la orden");
     			continue;
     		}
     		clasificacion=getClasificacionComando( argv[0] );
     		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
     		if (strcmp(ruta,"[error]") != 0 ){
-    			printf("%s\n", "me re forkee");
     			pid = fork();
     			if (pid == 0) {
     				ejecutarArchivo( ruta , argv );
@@ -178,5 +226,6 @@ int main () {
 
     	}		
     }
+    printf("\n");
 	return 0;
 }
