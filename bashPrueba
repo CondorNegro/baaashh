@@ -1,3 +1,4 @@
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
@@ -157,6 +158,100 @@ char *acondicionarHome(char directorioDeTrabajo[]){
 }
 
 
+
+/**
+ * Verifica si se debe redireccionar la entrada o la salida estandar.
+ * @param argv Arreglo que contiene el comando y los argumentos ingresados.
+ * @param fileName Almacena el nombre del archivo del que se lee, o en el que se escribe la salida.
+ * @return Devuelve 0 si no hay que redireccionar, 1 si hay que redireccionar la entrada, y 2 si hay que redireccionar la salida.
+ */
+
+int checkRedirect(char* argv[], char fileName[]){
+	int i;
+	for (i = 0; i < 100; i++){
+		char *token;     // para aceptar tanto ">archivo" como "> archivo"
+		token=strtok( argv[i] , ">" );
+		if(argv[i] == NULL){
+			fileName = NULL;
+			return 0;
+		}
+		else if (!strcmp(argv[i], "<")){
+			strcpy(fileName, argv[i+1]);
+			argv[i] = NULL;		
+			argv[i+1] = NULL;
+			return 1;
+		}
+		else if (!strcmp(argv[i], ">")){
+			strcpy(fileName, argv[i+1]);
+			argv[i] = NULL;	
+			argv[i+1] = NULL;
+			return 2;
+		}
+		
+		else if (!strncmp(argv[i], ">",1))
+		{
+			strcpy(fileName, token);
+			argv[i] = NULL;	
+
+			return 2;
+		}
+		else if (!strncmp(argv[i], "<",1))
+		{
+			strcpy(fileName, token);
+			argv[i] = NULL;	
+
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/**
+ * Modifica la entrada estándar.
+ * @param fileName nombre del archivo de entrada.
+ */
+void inPut(char fileName[]){
+	int fid;
+	int flags,perm;
+	flags = O_RDONLY;
+	perm = S_IWUSR|S_IRUSR;
+	
+	close(STDIN_FILENO);
+	fid = open(fileName, flags, perm);	
+	if (fid<0) {
+		perror("open");
+		exit(1);
+	}	
+	if (dup(fid)<0) {
+		perror("dup");
+		exit(1);
+	}
+	close(fid);	
+}
+
+/**
+ * Modifica la salida estándar.
+ * @param fileName nombre del archivo donde se envía la salida.
+ */
+void outPut(char fileName[]){
+	int fid;
+	int flags,perm;
+	flags = O_WRONLY|O_CREAT|O_TRUNC;
+	perm = S_IWUSR|S_IRUSR;
+	
+	fid = open(fileName, flags, perm);	
+	if (fid<0) {
+		perror("open");
+		exit(1);
+	}
+	close(STDOUT_FILENO);
+	if (dup(fid)<0) {
+		perror("dup");
+		exit(1);
+	}
+	close(fid);
+}
+
 extern int errno ;	
 int main () {
 	int argc;
@@ -170,6 +265,8 @@ int main () {
 	char * clasificacion;
 	char * ruta;
 	int cantidadpaths=getPaths ( paths );
+	char fileName[100];
+	int flagRedirect = 0;
     while ( ! feof ( stdin ) ) {
     	getcwd(actualdir, 100);
     	LOG_RED(getlogin(), hostname); //imprimo el uid/gid
@@ -185,6 +282,7 @@ int main () {
 
     	else{
     		argc=parseArguments(argv,buffer);
+    		flagRedirect = checkRedirect(argv, fileName);
     		if( strcmp (argv[0] , "cd") == 0 && argc>2){
     			char carpeta[100]="";
     			for (int i = 1; i < argc; ++i){
@@ -217,6 +315,9 @@ int main () {
     		if (strcmp(ruta,"[error]") != 0 ){
     			pid = fork();
     			if (pid == 0) {
+    				if(flagRedirect == 2){
+						outPut(fileName);
+					}
     				ejecutarArchivo( ruta , argv );
     				exit(0);
     			}
