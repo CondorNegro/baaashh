@@ -168,6 +168,7 @@ void cdBuiltin ( char* argumento ) {
 		fprintf ( stderr , "ERRNO: %d\n" , errno );
     	perror ( "Error" );
 	}
+	
 }
 
 /**
@@ -327,20 +328,26 @@ int main () {
 	int cantidadpaths= getPaths ( paths );
 	char fileName[100];
 	int flagRedirect = 0;
-	int flagPlano=2;
+	int flagPlano=0;
+	
+	int flagSaltoLinea=0;
+	int contadorImpresion=0;
 	int volatile contadorHijos=0; //Para saber el numero de hijos.
 	int volatile contadorHijosAnterior=-1; //Por estetica de la consola. Mostrar ejecución de hilo anterior.
 	
+   
     while ( ! feof ( stdin ) ) { 		//Ejecución siempre y cuando no aparezca un Ctrl+D.
+    	
 	    getcwd(actualdir, 100);        //Directorio de trabajo almacenado en actualdir.
-	    LOG_RED(getlogin(), hostname); //Imprime el uid/gid
-	    strcat(actualdir, " $");
-	    char *dir=acondicionarHome(actualdir);
-	    LOG_BLUE(dir);
-	    
-    	strcpy(buffer, "\n"); 		 
+		LOG_RED(getlogin(), hostname); //Imprime el uid/gid
+		strcat(actualdir, " $");
+		char *dir=acondicionarHome(actualdir);
+		LOG_BLUE(dir);
+		
+		
+	  	strcpy(buffer, "\n"); 		 
     	fgets(buffer,1024,stdin);
-    	if (strcmp(buffer,"\n")==0) { //Si se ingresa '\n'.
+    	if (strcmp(buffer,"\n")==0 ) { //Si se ingresa '\n'.
     		continue;
     	}
 
@@ -356,46 +363,59 @@ int main () {
     				}
     			}
     			cdBuiltin(carpeta);
+    			
     			continue;
     		}
     		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) { // Comando interno cd con directorios que no presentan 
     															// espacios en blanco.
     			cdBuiltin ( argv[1] );
+    			
     			continue;
     		}
      		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) { //Ingreso de ~.
      																							//Ingreso de cd (solamente).
     			cdBuiltin(getenv("HOME"));
+    			
     			continue;
     		}
 
     		if ( strcmp ( argv[0] , "exit" ) == 0 ) { //Ingreso de "exit".
+
     			return 0;
     		}
     		if (strcmp(argv[0],"..") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
     			printf("%s\n", "..: No se encontro la orden");
     			continue;
     		}
+    		if (strcmp(argv[0],"&") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
+    			printf("%s\n", "bash : error sintactico cerca del elemento inesperado \"&\"");
+    			continue;
+    		}
     		clasificacion=getClasificacionComando( argv[0] );
+    		
+    		if(strcmp(argv[argc-1],"&") != 0){
+    				flagPlano=1;
+    		}
+    		
+    		
+    		else{
+    			flagPlano=2;
+    			argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
+    								//debido al ampersand.
+    			argc--;
+    		}
     		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
-    		//
+    		
     		if (strcmp(ruta,"[error]") != 0 ){
     			contadorHijosAnterior=contadorHijos;
     			contadorHijos++;
     			
-    			if(strcmp(argv[argc-1],"&") != 0){
-    				flagPlano=1;
-    			}
-    			else{
-    				flagPlano=2;
-    				argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
-    									//debido al ampersand.
-    				argc--;
-    			}
+    			
 
     			flagRedirect = checkRedirect(argv, fileName);
+    			
     			pid = fork();
-    			  			
+    			 			
 
     			if (pid == 0) { //Proceso hijo.
     				
@@ -432,11 +452,17 @@ int main () {
     			else{
     				if(flagPlano==1){ //Ejecucion de proceso hijo es en primer plano.
     					wait(0); //Wait.
-    					
+    					sleep(1);
+					
+    						
+						
     					contadorHijos=0;    					
     				}
     				else{ //Ejecucion de proceso hijo es en segundo plano. No espera.
-    					printf ("[%d]   %d\n", contadorHijos , pid );    					
+    					
+    					printf ("[%d]   %d\n", contadorHijos , pid );  
+    					
+	    					      					
     				}		
     			}	
     		}
