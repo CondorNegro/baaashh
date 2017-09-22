@@ -370,6 +370,7 @@ void doPipeline(char* argv1[], char* argv2[], char* paths[], int doPipe){
 
 
 
+
 extern int errno ;
 
 
@@ -452,12 +453,20 @@ int main () {
 	    			printf("%s\n", "bash : error sintactico cerca del elemento inesperado \"&\"");
 	    			continue;
 	    		}
+	    		
 	    		clasificacion=getClasificacionComando( argv[0] );
 	    		if(strcmp(argv[argc-1],"&") != 0){
 	    				flagPlano=1;
 	    		}
+
+	    		else if(strcmp(argv[argc-1],"&") == 0){
+	    			flagPlano=2;
+	    			argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
+	    								//debido al ampersand.
+	    			argc--;
+	    		}
 	    		
-	    		const char ch = '&';
+	    		const char ch = '&'; //Para caso especial por ejemplo:  'ls&'.
 	   			char *resto;
 	   			resto = strrchr(argv[argc-1], ch);
 	   			if (resto!=NULL)
@@ -471,12 +480,7 @@ int main () {
 					flagPlano=2;
 	   			}
 	    		
-	    		if(strcmp(argv[argc-1],"&") == 0){
-	    			flagPlano=2;
-	    			argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
-	    								//debido al ampersand.
-	    			argc--;
-	    		}
+	    		
 
 	    		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
 	    		
