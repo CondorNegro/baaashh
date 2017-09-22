@@ -57,7 +57,6 @@ int parse_Command( char* argv[] , char* cadena ) {
 /**
  * Se encarga de obtener el arreglo de Paths.
  * @param paths Arreglo donde se colocarán las direcciones que se encuentran en la variable de entorno PATH.
-
  * @return int Numero de Paths.
  */
 int getPaths ( char* paths[] ) {
@@ -119,7 +118,6 @@ char * getRutaEjecucion ( char* paths[] , int cantidad , char* comando , char* c
 /**
  * Se encarga de clasificar el comando en absoluto (/) , relativo (./) , relativo-r (../) o comando.
  * @param comando Es el comando a clasificar.
-
  * @return char* Puntero al string de clasificacion.
  */
 char * getClasificacionComando ( char* comando ) {  // Clasifica el comando en absoluto , relativo , relativo-r o comando.
@@ -139,7 +137,6 @@ char * getClasificacionComando ( char* comando ) {  // Clasifica el comando en a
 /**
  * Se encarga de ejecutar el archivo pasado como parametro, junto con sus argumentos.
  * @param ruta Es la ruta del archivo a ejecutar.
-
  * @return void
  */
 void ejecutarArchivo (  char* ruta , char* argumentos[] ) {
@@ -158,7 +155,6 @@ void ejecutarArchivo (  char* ruta , char* argumentos[] ) {
 /**
  * Gestor de operaciones del comando interno cd.
  * @param argumento Puntero al directorio al cual se quiere ir.
-
  * @return void
  */
 void cdBuiltin ( char* argumento ) {
@@ -227,8 +223,6 @@ char *acondicionarHome(char directorioDeTrabajo[]){
 int checkRedirect(char* argv[], char fileName[]){
 	int i;
 	for (i = 0; i < 100; i++){
-		char *token;     // para aceptar tanto ">archivo" como "> archivo"
-		token=strtok( argv[i] , ">" );
 		if(argv[i] == NULL){
 			fileName = NULL;
 			return 0;
@@ -248,6 +242,8 @@ int checkRedirect(char* argv[], char fileName[]){
 		
 		else if (!strncmp(argv[i], ">",1))
 		{
+			char *token;     // para aceptar tanto ">archivo" como "> archivo"
+		    token=strtok( argv[i] , ">" );
 			strcpy(fileName, token);
 			argv[i] = NULL;	
 
@@ -255,6 +251,8 @@ int checkRedirect(char* argv[], char fileName[]){
 		}
 		else if (!strncmp(argv[i], "<",1))
 		{
+			char *token;     // para aceptar tanto "<archivo" como "< archivo"
+			token=strtok( argv[i] , "<" );
 			strcpy(fileName, token);
 			argv[i] = NULL;	
 
@@ -311,13 +309,76 @@ void outPut(char fileName[]){
 }
 
 
+/**
+ * Verifica si debe realizarse un pipeline.
+ * @param argv Argumentos del comando ingresado por el usuario.
+ * @param argvPipe Array donde se guardarán los argumentos del comando 2, de encontrarse un pipe.
+ * @return Devuelve 1 si se debe ejecutar el pipeline. 0 en caso contrario.
+ */
+int checkPipe(char* argv[], char* argvPipe[], int* argc, int* argcPipe){
+	int index;
+	int contador=0;
+	int flagPipear=0;
+	for( index = 0 ; argv[index] != NULL ; index++ ) {
+		if (flagPipear==1){
+			argvPipe[contador]=argv[index];
+			contador++;
+			argv[index] = NULL;
+			argc--;
+			argcPipe++;
+		}
+		if ( strcmp ( "|" , argv[index] ) == 0 ) {
+		 	flagPipear=1;
+		}
+	}
+	
+	return flagPipear;
+}
+
+
+/**
+ * Ejecuta el Pipeline
+ * @param argv1 Argumentos del comando 1.
+ * @param argv2 Argumentos del comando 2.
+ * @param paths Paths donde puede buscar los archivos que ejecutan los comandos.
+ */
+void doPipeline(char* argv1[], char* argv2[], char* paths[], int doPipe){
+	if (doPipe){
+		char executePath[256];
+		int fd[2];
+		pipe(fd);
+		if (fork()==0) { //codigo del hijo
+			close(fd[0]);
+			dup2(fd[1],1); // redireccion de la salida al pipe.
+			close(fd[1]);
+			//buscarArchivo(argv1[0], paths, executePath);
+			execv(executePath, argv1);
+			perror(executePath);
+			exit(1);
+		} 
+		else {
+			close(fd[1]); //codigo del padre
+			dup2(fd[0],0);
+			close(fd[0]);
+			//buscarArchivo(argv2[0], paths, executePath);
+			execv(executePath, argv2);
+			perror(executePath);
+			exit(1);
+		}
+	}
+}
+
+
+
 extern int errno ;
 
 
 int main () {
 	int argc;
+	int argcP;
 	pid_t pid;
 	char *argv[20];
+	char *argvP[20];
 	char *paths[25];
 	char buffer[1024];
 	char hostname [30];
@@ -330,10 +391,9 @@ int main () {
 	int flagRedirect = 0;
 	int flagPlano=0;
 	
-	int flagSaltoLinea=0;
-	int contadorImpresion=0;
+	
 	int volatile contadorHijos=0; //Para saber el numero de hijos.
-	int volatile contadorHijosAnterior=-1; //Por estetica de la consola. Mostrar ejecución de hilo anterior.
+	
 	
    
     while ( ! feof ( stdin ) ) { 		//Ejecución siempre y cuando no aparezca un Ctrl+D.
@@ -353,118 +413,143 @@ int main () {
 
     	else{
     		argc=parse_Command(argv,buffer);
-    		if( strcmp (argv[0] , "cd") == 0 && argc>2){ // Comando interno cd con directorios que presentan 
-    													// espacios en blanco.
-    			char carpeta[100]="";
-    			for (int i = 1; i < argc; ++i){
-    				strcat(carpeta , argv[i]);
-    				if(argc!=i+1){
-    					strcat(carpeta," ");
-    				}
-    			}
-    			cdBuiltin(carpeta);
-    			
-    			continue;
-    		}
-    		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) { // Comando interno cd con directorios que no presentan 
-    															// espacios en blanco.
-    			cdBuiltin ( argv[1] );
-    			
-    			continue;
-    		}
-     		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) { //Ingreso de ~.
-     																							//Ingreso de cd (solamente).
-    			cdBuiltin(getenv("HOME"));
-    			
-    			continue;
-    		}
+    		if(!checkPipe(argv,argvP, &argc, &argcP)){
+	    		if( strcmp (argv[0] , "cd") == 0 && argc>2){ // Comando interno cd con directorios que presentan 
+	    													// espacios en blanco.
+	    			char carpeta[100]="";
+	    			for (int i = 1; i < argc; ++i){
+	    				strcat(carpeta , argv[i]);
+	    				if(argc!=i+1){
+	    					strcat(carpeta," ");
+	    				}
+	    			}
+	    			cdBuiltin(carpeta);
+	    			
+	    			continue;
+	    		}
+	    		if ( strcmp ( argv[0] , "cd" ) == 0 && argc > 1 ) { // Comando interno cd con directorios que no presentan 
+	    															// espacios en blanco.
+	    			cdBuiltin ( argv[1] );
+	    			
+	    			continue;
+	    		}
+	     		if ( (strcmp ( argv[0] , "cd" ) == 0 && argc == 1) || strcmp(argv[0] , "~") == 0 ) { //Ingreso de ~.
+	     																							//Ingreso de cd (solamente).
+	    			cdBuiltin(getenv("HOME"));
+	    			
+	    			continue;
+	    		}
 
-    		if ( strcmp ( argv[0] , "exit" ) == 0 ) { //Ingreso de "exit".
+	    		if ( strcmp ( argv[0] , "exit" ) == 0 ) { //Ingreso de "exit".
 
-    			return 0;
-    		}
-    		if (strcmp(argv[0],"..") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
-    			printf("%s\n", "..: No se encontro la orden");
-    			continue;
-    		}
-    		if (strcmp(argv[0],"&") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
-    			printf("%s\n", "bash : error sintactico cerca del elemento inesperado \"&\"");
-    			continue;
-    		}
-    		clasificacion=getClasificacionComando( argv[0] );
-    		
-    		if(strcmp(argv[argc-1],"&") != 0){
-    				flagPlano=1;
-    		}
-    		
-    		
-    		else{
-    			flagPlano=2;
-    			argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
-    								//debido al ampersand.
-    			argc--;
-    		}
-    		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
-    		
-    		if (strcmp(ruta,"[error]") != 0 ){
-    			contadorHijosAnterior=contadorHijos;
-    			contadorHijos++;
-    			
-    			
-
-    			flagRedirect = checkRedirect(argv, fileName);
-    			
-    			pid = fork();
-    			 			
-
-    			if (pid == 0) { //Proceso hijo.
-    				
-    				
-    				
-    				if(flagPlano==1){ //No es en segundo plano la ejecución.
-    					
-    					if(flagRedirect == 2){
-							outPut(fileName);
-						}
-						else if(flagRedirect == 1){						
-							freopen(fileName,"r",stdin);
-						}
-    					ejecutarArchivo( ruta , argv );
-    					
-    				}
-    				else{
-    				
-    					
-    					if(flagRedirect == 2){
-							outPut(fileName);
-						}
-						else if(flagRedirect == 1){						
-							freopen(fileName,"r",stdin);
-						}
-    					ejecutarArchivo( ruta , argv );
-    					
-    					
-    				}
-    				
-    				exit(0);
-    				
-    			}
-    			else{
-    				if(flagPlano==1){ //Ejecucion de proceso hijo es en primer plano.
-    					wait(0); //Wait.
-    					sleep(1);
+	    			return 0;
+	    		}
+	    		if (strcmp(argv[0],"..") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
+	    			printf("%s\n", "..: No se encontro la orden");
+	    			continue;
+	    		}
+	    		if (strcmp(argv[0],"&") == 0 ){  //Ingreso de .. (Basado en Shell de Linux).
+	    			printf("%s\n", "bash : error sintactico cerca del elemento inesperado \"&\"");
+	    			continue;
+	    		}
+	    		clasificacion=getClasificacionComando( argv[0] );
+	    		if(strcmp(argv[argc-1],"&") != 0){
+	    				flagPlano=1;
+	    		}
+	    		
+	    		const char ch = '&';
+	   			char *resto;
+	   			resto = strrchr(argv[argc-1], ch);
+	   			if (resto!=NULL)
+	   			{
+	   				char *token;   
+	    			
+					token=strtok( argv[argc-1] , "&\n" );
 					
-    						
+					argv[argc-1]=token;
+					
+					flagPlano=2;
+	   			}
+	    		
+	    		if(strcmp(argv[argc-1],"&") == 0){
+	    			flagPlano=2;
+	    			argv[argc-1]=NULL; //Para evitar errores de argumentos en los programas
+	    								//debido al ampersand.
+	    			argc--;
+	    		}
+
+	    		ruta=getRutaEjecucion(paths,cantidadpaths,argv[0],clasificacion,actualdir);
+	    		
+	    		if (strcmp(ruta,"[error]") != 0 ){
+	    			
+	    			contadorHijos++;
+	    			
+	    			
+
+	    			flagRedirect = checkRedirect(argv, fileName);
+	    			
+	    			pid = fork();
+	    			 			
+	    			if (pid==-1)
+	    			{
+	    				perror("Saracatunga");
+	    				exit(1);
+	    			}
+	    			if (pid == 0) { //Proceso hijo.
+	    				
+	    				
+	    				
+	    				if(flagPlano==1){ //No es en segundo plano la ejecución.
+	    					
+	    					if(flagRedirect == 2){
+								outPut(fileName);
+							}
+							else if(flagRedirect == 1){						
+								freopen(fileName,"r",stdin);
+							}
+	    					ejecutarArchivo( ruta , argv );
+	    					
+	    				}
+	    				else{
+	    				
+	    					
+	    					if(flagRedirect == 2){
+								outPut(fileName);
+							}
+							else if(flagRedirect == 1){						
+								freopen(fileName,"r",stdin);
+							}
+	    					ejecutarArchivo( ruta , argv );
+	    					
+	    					
+	    				}
+	    				
+	    				exit(0);
+	    				
+	    			}
+	    			else{
+	    				if(flagPlano==1){ //Ejecucion de proceso hijo es en primer plano.
+	    					wait(0); //Wait.
+	    					sleep(1);
 						
-    					contadorHijos=0;    					
-    				}
-    				else{ //Ejecucion de proceso hijo es en segundo plano. No espera.
-    					
-    					printf ("[%d]   %d\n", contadorHijos , pid );  
-    					
-	    					      					
-    				}		
-    			}	
+	    						
+							
+	    					contadorHijos=0;    					
+	    				}
+	    				else{ //Ejecucion de proceso hijo es en segundo plano. No espera.
+	    					
+	    					printf ("[%d]   %d\n", contadorHijos , pid );  
+	    					
+		    					      					
+	    				}		
+	    			}
+	    		}	
+    		} //Fin CheckPIPE.
+
+    		else{ //Else ChexkPIPE.
+
+	
+
     		}
 
     	}
