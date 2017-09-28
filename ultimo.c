@@ -1,4 +1,4 @@
-//ultima modificacion 28 sep 2017 16:28
+//ultima modificacion 28 sep 2017 20:53
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -485,15 +485,16 @@ int main () {
 						exit ( 1 ) ;
 					}
 				}
-				else { //Proces padre.
+				//Proces padre.
+				else { 
 					flagWaitPID = -1;
+					waitpid( -1 , NULL , WNOHANG );
 				}
 				if ( bgProcess ) {
-					waitpid( pid , &flagWaitPID , WNOHANG );
-					printf ( "[%d]   %d\n", contadorHijos , pid );
+					printf ( "[%d]   %d\n", contadorHijos , pid ); // para imprimir [Id] hijo
 				}
 				else {
-					waitpid ( pid , &flagWaitPID , 0 );
+					waitpid ( pid , &flagWaitPID , 0 ); // No espero!
 				}
 			}
 		}
@@ -501,4 +502,4 @@ int main () {
 	return 0;
 }
 
-//falta arreglar FUCKINGS ZOMBIES
+
