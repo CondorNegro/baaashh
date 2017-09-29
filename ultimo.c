@@ -1,5 +1,3 @@
-//ultima modificacion 28 sep 2017 20:53
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -339,7 +337,6 @@ void doPipeline ( char* argv1[] , char* argv2[] , char* paths[] ) {
 /**
 * Remplaza el /home/username por el caracter ~.
 * @param directorioDeTrabajo Arreglo que contiene el directorio actual de trabajo.
-
 * @return Devuelve el directorio a imprimir por consola.
 */
 char *acondicionarHome ( char directorioDeTrabajo[] ) {
@@ -393,7 +390,7 @@ int main () {
 	getPaths ( paths );
 	int volatile contadorHijos = 0; //Para saber el numero de hijos.
 
-	while (1) {
+	while (!feof(stdin)) {
 		strcpy ( comando , "\n" ); //Vacío el comando para que no se ejecute si se presiona Ctrl+D.
 		flagWaitPID = 0; //Limpio las banderas
 		getcwd ( actualdir , 100 );        //Directorio de trabajo almacenado en actualdir.
@@ -413,7 +410,7 @@ int main () {
 		//Comandos internos del bash. 
 			if ( !strcmp ( comando , "exit" ) )
 				return 0;
-			if( !strcmp (argV[0] , "cd" ) ) {
+			if( !strcmp (argV[0] , "cd" ) || !strcmp (argV[0] , "~" )) {
 				if ( argC==1 ) {
 					cdBuiltin ( getenv ( "HOME" ) );
 				}
@@ -435,6 +432,8 @@ int main () {
 				printf ( "%s\n" , "..: No se encontro la orden" );
 				continue;
 			}
+
+
 
 			if (strcmp ( argV[0] , "&" ) == 0 ) {  //Ingreso de .. (Basado en Shell de Linux).
 				printf ( "%s\n" , "bash : error sintactico cerca del elemento inesperado \"&\"");
@@ -465,7 +464,7 @@ int main () {
 				contadorHijos++;
 				pid = fork();
 				if ( pid < 0 ) {
-					perror ( "Error al intentar forkear" );
+					perror ( "Error al hacer el fork");
 					exit ( 1 );
 				}
 				else if ( pid == 0 ) {  //Proceso hijo.
@@ -499,6 +498,7 @@ int main () {
 			}
 		}
 	}
+	printf("\n");
 	return 0;
 }
 
