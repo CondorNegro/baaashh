@@ -457,6 +457,7 @@ int main () {
 			if ( !strcmp ( comando , "exit" ) )
 				return 0;
 			if( !strcmp (argV[0] , "cd" ) || !strcmp (argV[0] , "~" )) {
+				contadorHijos=0;
 				if ( argC==1 ) {
 					cdBuiltin ( getenv ( "HOME" ) );
 				}
@@ -475,6 +476,7 @@ int main () {
 			}
 
 			if ( strcmp ( argV[0] , ".." ) == 0 ) {  //Ingreso de .. (Basado en Shell de Linux).
+				contadorHijos=0;
 				printf ( "%s\n" , "..: No se encontro la orden" );
 				continue;
 			}
@@ -482,6 +484,7 @@ int main () {
 
 
 			if (strcmp ( argV[0] , "&" ) == 0 ) {  //Ingreso de .. (Basado en Shell de Linux).
+				contadorHijos=0;
 				printf ( "%s\n" , "bash : error sintactico cerca del elemento inesperado \"&\"");
 				continue;
 			}
@@ -504,11 +507,14 @@ int main () {
 			flagRedirect = checkRedirect ( argV , fileName );
 			buscarArchivo ( argV[0] , paths , executePath );
 			if ( executePath[0] == 'D' ){
+				contadorHijos=0;
 				printf("baash: %s : Is a directory.\n",argV[0]);
 				continue;
 			}
-			if ( executePath[0] == 'X' )
+			if ( executePath[0] == 'X' ){
 				printf("baash: %s : No se encontro el archivo.\n",argV[0] );
+				contadorHijos=0;
+			}
 			else {
 				int pipeExecuted = 0;
 				contadorHijos++;
