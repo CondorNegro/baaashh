@@ -105,12 +105,48 @@ void cdBuiltin ( char* argumento ) {
 * @param paths Arreglo con todos los directorios en los que se quiere buscar
 * @param execPath Es el path completo al ejecutable que se encontro. Si no se encuentra el archivo, se pone 'X' en execPath[0]
 */
+
+
 void buscarArchivo ( char* arch , char* paths[] , char* execPath ) {
-	char returnPath[50];
+	char returnPath[150];
 	int result;
-	char searchDir[50] = "";
+	char searchDir[150] = "";
 	char* archivo;
 	strcpy(returnPath, arch);
+	int flagPuntosBarras=1;
+	int flagTresPuntos=0;
+	int contTresPuntos=0;
+	int indiceAnteriorTresPuntos=0;
+	for (int i = 0; i < strlen(returnPath); i++){
+		if((arch[i])=='.'){	
+			if(i-indiceAnteriorTresPuntos==1){
+				contTresPuntos++;
+
+			}
+			indiceAnteriorTresPuntos=i;
+			
+			if(contTresPuntos==2){
+				contTresPuntos=0;
+				flagTresPuntos=1;
+			}
+		}
+		else{
+			indiceAnteriorTresPuntos=0;
+			contTresPuntos=0;
+		}
+		if(arch[i]!='/' && arch[i]!='.'){
+			flagPuntosBarras=0;
+		}
+	}
+	
+	if(flagPuntosBarras && !flagTresPuntos){
+		execPath[0] = 'D';
+		return;
+	}
+	if(flagTresPuntos){
+		execPath[0] = 'X';
+		return;
+	}
 	if ( arch[0] == '/' || ( arch[0] == '.' && arch[1] == '.' && arch[2] == '/' ) ) {
 		char* dir;
 		char* nextDir;
@@ -134,9 +170,9 @@ void buscarArchivo ( char* arch , char* paths[] , char* execPath ) {
 		}
 		archivo = dir;
 	}
-
+	
 	else if ( arch[0] == '.' && arch[1] == '/' ) { //Es un path relativo, tomando como path el directorio actual.
-		getcwd ( searchDir , 50 );
+		getcwd ( searchDir , 150 );
 		strcat ( searchDir , "/" );
 		const char ch = '/';
    		archivo = strchr(arch, ch);
@@ -145,7 +181,7 @@ void buscarArchivo ( char* arch , char* paths[] , char* execPath ) {
 
 	else { //Tiene que buscar en todos los directorios del path.
 		int i;
-		char aux[50];
+		char aux[150];
 		for ( i = 0 ; i < 20 ; i++ ) {
 			if(paths[i] == NULL)
 				break;
@@ -153,21 +189,31 @@ void buscarArchivo ( char* arch , char* paths[] , char* execPath ) {
 			strcat ( aux , "/" );
 			strcat ( aux , arch );
 			result = access ( aux , X_OK );
+
 			if ( !result ) {
 				strcpy ( execPath , aux );
 				return;
 			}
+
 		}
 		execPath[0] = 'X';
 		return;
 	}
 
 	strcat ( searchDir , archivo );
+
 	result = access ( searchDir , X_OK );
-	if( !result )
+	if( !result ){
 		strcpy ( execPath , searchDir );
+		execPath[0] = 'D';
+		
+		return;
+	}
 	else
 		execPath[0] = 'X';
+
+	
+	
 }
 
 
@@ -457,8 +503,12 @@ int main () {
 			doPipe = checkPipe ( argV , argv1 , argv2 );
 			flagRedirect = checkRedirect ( argV , fileName );
 			buscarArchivo ( argV[0] , paths , executePath );
+			if ( executePath[0] == 'D' ){
+				printf("baash: %s : Is a directory.\n",argV[0]);
+				continue;
+			}
 			if ( executePath[0] == 'X' )
-				printf("No se encontro el archivo\n");
+				printf("baash: %s : No se encontro el archivo.\n",argV[0] );
 			else {
 				int pipeExecuted = 0;
 				contadorHijos++;
@@ -488,12 +538,14 @@ int main () {
 				else { 
 					flagWaitPID = -1;
 					waitpid( -1 , NULL , WNOHANG );
+
 				}
 				if ( bgProcess ) {
 					printf ( "[%d]   %d\n", contadorHijos , pid ); // para imprimir [Id] hijo
 				}
 				else {
 					waitpid ( pid , &flagWaitPID , 0 ); // No espero!
+					contadorHijos=0;
 				}
 			}
 		}
@@ -501,5 +553,3 @@ int main () {
 	printf("\n");
 	return 0;
 }
-
-
